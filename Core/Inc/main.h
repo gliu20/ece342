@@ -36,7 +36,10 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
+/* Exported functions prototypes ---------------------------------------------*/
+void Error_Handler(void);
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -46,7 +49,11 @@ extern "C" {
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-
+#define SAMPLING_RATE 48000
+#define BASE_FREQ 1000
+#define SAMPLES (int)(SAMPLING_RATE/BASE_FREQ)
+#define BLOCK_SIZE 1
+#define NUM_TAPS 29
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
