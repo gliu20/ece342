@@ -1,9 +1,0 @@
-config.c:16:6:SystemClock_Config	3
-config.c:63:6:MX_ADC3_Init	3
-config.c:115:6:MX_DAC_Init	3
-config.c:155:6:MX_TIM7_Init	3
-config.c:193:6:MX_TIM6_Init	3
-config.c:231:6:MX_USART3_UART_Init	2
-config.c:264:6:MX_USB_OTG_FS_PCD_Init	2
-config.c:299:6:MX_GPIO_Init	1
-config.c:384:6:Error_Handler	1

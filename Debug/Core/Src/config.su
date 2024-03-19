@@ -1,9 +1,0 @@
-../Core/Src/config.c:16:6:SystemClock_Config	88	static
-../Core/Src/config.c:63:6:MX_ADC3_Init	24	static
-../Core/Src/config.c:115:6:MX_DAC_Init	16	static
-../Core/Src/config.c:155:6:MX_TIM7_Init	16	static
-../Core/Src/config.c:193:6:MX_TIM6_Init	16	static
-../Core/Src/config.c:231:6:MX_USART3_UART_Init	8	static
-../Core/Src/config.c:264:6:MX_USB_OTG_FS_PCD_Init	8	static
-../Core/Src/config.c:299:6:MX_GPIO_Init	56	static
-../Core/Src/config.c:384:6:Error_Handler	8	static,ignoring_inline_asm
