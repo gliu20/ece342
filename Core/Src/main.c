@@ -46,13 +46,13 @@
 DAC_HandleTypeDef hdac;
 DMA_HandleTypeDef hdma_dac1;
 
+TIM_HandleTypeDef htim5;
 TIM_HandleTypeDef htim6;
 TIM_HandleTypeDef htim7;
 
 UART_HandleTypeDef huart3;
 
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
-
 
 int8_t current_row = -1, current_col = -1;
 uint8_t keypad_poll = 0;
@@ -99,6 +99,7 @@ static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_DAC_Init(void);
 static void MX_TIM7_Init(void);
 static void MX_TIM6_Init(void);
+static void MX_TIM5_Init(void);
 
 void poll_keypad(void);
 /* USER CODE BEGIN PFP */
@@ -116,6 +117,7 @@ void poll_keypad(void);
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
 	arm_fir_instance_f32 S;
   /* USER CODE END 1 */
@@ -148,18 +150,21 @@ int main(void)
   MX_DAC_Init();
   MX_TIM7_Init();
   MX_TIM6_Init();
-
+  MX_TIM5_Init();
 
   for (int i = 0; i < SAMPLES/2 - 1; i++){
-	  square[i] = 1;
-  }
+  	  square[i] = 1;
+    }
 
-  for (int i = SAMPLES/2 - 1; i < SAMPLES - 1; i++){
-  	  square[i] = -1;
-  }
-  HAL_DACEx_NoiseWaveGenerate(&hdac, DAC_CHANNEL_1, DAC_LFSRUNMASK_BITS4_0);
+    for (int i = SAMPLES/2 - 1; i < SAMPLES - 1; i++){
+    	  square[i] = -1;
+    }
+//    HAL_DACEx_NoiseWaveGenerate(&hdac, DAC_CHANNEL_1, DAC_LFSRUNMASK_BITS5_0);
 
-  HAL_DACEx_TriangleWaveGenerate(&hdac, DAC_CHANNEL_1, DAC_TRIANGLEAMPLITUDE_4095);
+    HAL_DACEx_TriangleWaveGenerate(&hdac, DAC_CHANNEL_1, DAC_TRIANGLEAMPLITUDE_1023);
+
+//    HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 2047);
+
   /* USER CODE BEGIN 2 */
   current_row = 0;
   HAL_GPIO_WritePin(ROW0_GPIO_Port, ROW0_Pin, GPIO_PIN_RESET);
@@ -169,6 +174,7 @@ int main(void)
   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
   HAL_TIM_Base_Start_IT(&htim7);
   HAL_TIM_Base_Start_IT(&htim6);
+  HAL_TIM_Base_Start(&htim5);
 
 	float32_t  *inputF32;
 	inputF32 = &sine[0];
@@ -180,46 +186,42 @@ int main(void)
   {
     /* USER CODE END WHILE */
 	  if (keypad_poll){
-	  		  keypad_poll = 0;
-	  		  current_row = 0;
-//	  	  	  poll_keypad();
-	  	  }
+	  	  		  keypad_poll = 0;
+	  	  		  current_row = 0;
+	  	  	  	  poll_keypad();
+	  	  	  }
 
-	  	  if (key_pressed){
-	  		key_pressed = 0;
-	  		if ((current_row - 1 == 2) && (current_col == 1)){
-	  			// double the frequency
-	  			incr = incr*2;
-	  		}else if ((current_row - 1 == 2) && (current_col == 0)){
-	  			// half the frequency (haven't exactly figured out how to go below 1 kHz)
-	  //			if (incr > 1){
-	  //				incr = incr >> 1;
-	  //			}
-	  			incr = incr/2;
-	  		}
-	  	  }
+	  	  	  if (key_pressed){
+	  	  		key_pressed = 0;
+	  	  		if ((current_row - 1 == 2) && (current_col == 1)){
+	  	  			// double the frequency
+	  	  			incr = incr*2;
+	  	  		}else if ((current_row - 1 == 2) && (current_col == 0)){
+	  	  			// half the frequency (haven't exactly figured out how to go below 1 kHz)
+	  	  //			if (incr > 1){
+	  	  //				incr = incr >> 1;
+	  	  //			}
+	  	  			incr = incr/2;
+	  	  		}
+	  	  	  }
 
-	  	if (new_sample){
-	  	  new_sample = 0;
+	  	  	if (new_sample){
+	  	  	  new_sample = 0;
 
-	  	  if (filter_en){
-	  		  arm_fir_f32(&S, inputF32 + (uint32_t)(index)%SAMPLES, &output, blockSize);
-	  	  }else{
-//	  		  output = sine[(uint32_t)(index)%SAMPLES];
+	  	  	  if (filter_en){
+	  	  		  arm_fir_f32(&S, inputF32 + (uint32_t)(index)%SAMPLES, &output, blockSize);
+	  	  	  }else{
+	  //	  		  output = sine[(uint32_t)(index)%SAMPLES];
 
-	  		output = square[(uint32_t)(index)%SAMPLES];
-	  		  // for square wave
-//	  		  output = 1;
-//
-//	  		  output = -1;
-	  	  }
+	  	  		output = square[(uint32_t)(index)%SAMPLES];
+	  	  	  }
 
-	  	  output *= 3000;
-	  	  output += 2047;
-	  	  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (uint16_t)output);
+	  	  	  output *= 2047;
+	  	  	  output += 2047;
+	  	  	  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (uint16_t)output);
 
-	  	  index += incr;
-	  	}
+	  	  	  index += incr;
+	  	  	}
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -323,7 +325,7 @@ static void MX_DAC_Init(void)
 
   /** DAC channel OUT1 config
   */
-  sConfig.DAC_Trigger = DAC_TRIGGER_T7_TRGO;
+  sConfig.DAC_Trigger = DAC_TRIGGER_T5_TRGO;
   sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
   if (HAL_DAC_ConfigChannel(&hdac, &sConfig, DAC_CHANNEL_1) != HAL_OK)
   {
@@ -332,6 +334,51 @@ static void MX_DAC_Init(void)
   /* USER CODE BEGIN DAC_Init 2 */
 
   /* USER CODE END DAC_Init 2 */
+
+}
+
+/**
+  * @brief TIM5 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM5_Init(void)
+{
+
+  /* USER CODE BEGIN TIM5_Init 0 */
+
+  /* USER CODE END TIM5_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM5_Init 1 */
+
+  /* USER CODE END TIM5_Init 1 */
+  htim5.Instance = TIM5;
+  htim5.Init.Prescaler = 0;
+  htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim5.Init.Period = 100;	// 19 for 1 kHz
+  htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim5, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim5, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM5_Init 2 */
+
+  /* USER CODE END TIM5_Init 2 */
 
 }
 
@@ -355,7 +402,7 @@ static void MX_TIM6_Init(void)
   htim6.Instance = TIM6;
   htim6.Init.Prescaler = 8400 - 1;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 1000 - 1;
+  htim6.Init.Period = 10000 - 1;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
@@ -399,7 +446,7 @@ static void MX_TIM7_Init(void)
   {
     Error_Handler();
   }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
   {
