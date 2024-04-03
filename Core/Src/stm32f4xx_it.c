@@ -246,7 +246,7 @@ void EXTI9_5_IRQHandler(void)
   if (__HAL_GPIO_EXTI_GET_FLAG(COL1_Pin) ||
       __HAL_GPIO_EXTI_GET_FLAG(COL2_Pin) ||
       __HAL_GPIO_EXTI_GET_FLAG(COL3_Pin)) {
-    key_pressed = 1;
+	  key_pressed = 1;
   }
   /* USER CODE END EXTI9_5_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(COL1_Pin);

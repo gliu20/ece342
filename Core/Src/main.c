@@ -156,7 +156,6 @@ void check_keys() {
   // This ensures that after scanning the rows, they are all set
   // to high, so the interrupt detects if ANY key is pressed
   HAL_GPIO_WritePin(ROW0_GPIO_Port, ROW0_Pin|ROW1_Pin|ROW2_Pin|ROW3_Pin, GPIO_PIN_SET);
-
 }
 /* USER CODE END 0 */
 
@@ -208,7 +207,7 @@ int main(void)
     	  square[i] = -1;
     }
 //    HAL_DACEx_NoiseWaveGenerate(&hdac, DAC_CHANNEL_1, DAC_LFSRUNMASK_BITS5_0);
-        HAL_DACEx_TriangleWaveGenerate(&hdac, DAC_CHANNEL_1, (9 << 8));
+//    HAL_DACEx_TriangleWaveGenerate(&hdac, DAC_CHANNEL_1, (9 << 8));
 
 //        HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 2047);
 
@@ -218,7 +217,7 @@ int main(void)
 
   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
   HAL_TIM_Base_Start_IT(&htim7);
-  HAL_TIM_Base_Start_IT(&htim6);
+//  HAL_TIM_Base_Start_IT(&htim6);
   HAL_TIM_Base_Start(&htim5);
 
 //	float32_t  *inputF32;
@@ -240,8 +239,8 @@ int main(void)
       // We cannot clear key_pressed here since we haven't
       // figured out which key was actually pressed
       // This is because scanning through keys generates
-      // interrupts which re-enables key_pressed, which 
-      // we won't be able to properly clear 
+      // interrupts which re-enables key_pressed, which
+      // we won't be able to properly clear
       check_keys();
 
       if (key_detected) {
@@ -323,7 +322,7 @@ int main(void)
 
 	  	  	  output *= 4095;
 	  	  	  output += 2047;
-//	  	  	  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (uint16_t)output);
+	  	  	  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (uint16_t)output);
 
 
 	  	  	  index += incr;
