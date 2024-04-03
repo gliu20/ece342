@@ -62,6 +62,7 @@ uint16_t trig_freq = 100;
 int8_t current_row = -1, current_col = -1;
 uint8_t keypad_poll = 0;
 uint8_t key_pressed = 0;
+uint8_t key_detected = 0;
 uint8_t filter_en = 0;
 uint8_t new_sample = 0;
 
@@ -107,13 +108,60 @@ static void MX_TIM6_Init(void);
 static void MX_TIM5_Init(void);
 
 void poll_keypad(void);
+void check_keys();
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+// Per the adafruit keypad library, it seems like they allow polling the keypad
+// at 20 us!! i.e. _KEYPAD_SETTLING_DELAY=20us
+// We should be able to do close to that too
+void check_keys() {
+  uint16_t row_pins[] = { ROW0_Pin, ROW1_Pin, ROW2_Pin, ROW3_Pin };
 
+  key_detected = 0;
+  for (int i = 0; i < 4; i++) {
+
+    // Clear Row0 to Row3; Only valid b/c they are all on GPIOC
+    HAL_GPIO_WritePin(ROW0_GPIO_Port, ROW0_Pin|ROW1_Pin|ROW2_Pin|ROW3_Pin, GPIO_PIN_RESET);
+
+    HAL_Delay(1);
+
+    // Set desired Row
+    HAL_GPIO_WritePin(ROW0_GPIO_Port, row_pins[i], GPIO_PIN_SET);
+    HAL_Delay(1);
+
+    if (HAL_GPIO_ReadPin(COL0_GPIO_Port, COL0_Pin)) {
+      current_row = i;
+      current_col = 0;
+      key_detected = 1;
+    }
+    if (HAL_GPIO_ReadPin(COL1_GPIO_Port, COL1_Pin)) {
+      current_row = i;
+      current_col = 1;
+      key_detected = 1;
+    }
+    if (HAL_GPIO_ReadPin(COL2_GPIO_Port, COL2_Pin)) {
+      current_row = i;
+      current_col = 2;
+      key_detected = 1;
+    }
+    if (HAL_GPIO_ReadPin(COL3_GPIO_Port, COL3_Pin)) {
+      current_row = i;
+      current_col = 3;
+      key_detected = 1;
+    }
+  }
+
+  HAL_Delay(1);
+
+  // This ensures that after scanning the rows, they are all set
+  // to high, so the interrupt detects if ANY key is pressed
+  HAL_GPIO_WritePin(ROW0_GPIO_Port, ROW0_Pin|ROW1_Pin|ROW2_Pin|ROW3_Pin, GPIO_PIN_SET);
+
+}
 /* USER CODE END 0 */
 
 /**
@@ -169,11 +217,9 @@ int main(void)
 //        HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 2047);
 
   /* USER CODE BEGIN 2 */
-  current_row = 0;
-  HAL_GPIO_WritePin(ROW0_GPIO_Port, ROW0_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(ROW0_GPIO_Port, ROW1_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(ROW0_GPIO_Port, ROW2_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(ROW0_GPIO_Port, ROW3_Pin, GPIO_PIN_RESET);
+  // Set Row0 to Row3; Only valid b/c they are all on GPIOC
+  HAL_GPIO_WritePin(ROW0_GPIO_Port, ROW0_Pin|ROW1_Pin|ROW2_Pin|ROW3_Pin, GPIO_PIN_SET);
+
   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
   HAL_TIM_Base_Start_IT(&htim7);
   HAL_TIM_Base_Start_IT(&htim6);
@@ -190,63 +236,83 @@ int main(void)
     /* USER CODE END WHILE */
 	  if (keypad_poll){
 	  	keypad_poll = 0;
-	  	current_row = 0;
-	  	poll_keypad();
+	  	//current_row = 0;
+	  	//poll_keypad();
 	  }
 
-	  if (key_pressed){
-		  key_pressed = 0;
+    if (key_pressed){
+      // We cannot clear key_pressed here since we haven't
+      // figured out which key was actually pressed
+      // This is because scanning through keys generates
+      // interrupts which re-enables key_pressed, which 
+      // we won't be able to properly clear 
+      check_keys();
 
-	  	  if ((current_row - 1 == 2) && (current_col == 1)){
-	  		  // double the frequency
-	  		  incr = incr*2;
-	  	  }else if ((current_row - 1 == 2) && (current_col == 0)){
-	  	  // half the frequency (haven't exactly figured out how to go below 1 kHz)
-	  		  incr = incr/2;
-	  	  }else if ((current_row - 1 == 3) && (current_col == 1)){
-	  		  // Increase volume (if not maximum)
-	  	      if (volume_level < 10){
-	  	    	  volume_level++;
-	  	      }
-	  	  }else if ((current_row - 1 == 3) && (current_col == 0)){
-	  		  // Decrease volume (if not minimum)
-	  		  if (volume_level > 0){
-	  	                volume_level--;
-	  		  }
+      if (key_detected) {
+        if ((current_row == 2) && (current_col == 1)){
+          // double the frequency
+          incr = incr*2;
+        }
+        else if ((current_row == 2) && (current_col == 0)){
+          // half the frequency (haven't exactly figured out how to go below 1 kHz)
+          incr = incr/2;
+        }
+        else if ((current_row == 3) && (current_col == 1)){
+          // Increase volume (if not maximum)
+          if (volume_level < 10){
+            volume_level++;
+          }
+        }
+        else if ((current_row == 3) && (current_col == 0)){
+          // Decrease volume (if not minimum)
+          if (volume_level > 0){
+            volume_level--;
+          }
 
-	  	// Control volume of triangular wave
-	  	  }else if ((current_row - 1 == 3) && (current_col == 3)){
-	  		if (trig_vol < 11){
-	  			trig_vol++;
-	  		}
-	  		HAL_DACEx_TriangleWaveGenerate(&hdac, DAC_CHANNEL_1, (trig_vol << 8));
-	  	  }else if ((current_row - 1 == 3) && (current_col == 2)){
-	  		if (trig_vol > 0){
-	  			trig_vol--;
-	  		}
-	  		HAL_DACEx_TriangleWaveGenerate(&hdac, DAC_CHANNEL_1, (trig_vol << 8));
+        // Control volume of triangular wave
+        }
+        else if ((current_row == 3) && (current_col == 3)){
+          if (trig_vol < 11){
+            trig_vol++;
+          }
+          HAL_DACEx_TriangleWaveGenerate(&hdac, DAC_CHANNEL_1, (trig_vol << 8));
+        }
+        else if ((current_row == 3) && (current_col == 2)){
+          if (trig_vol > 0){
+            trig_vol--;
+          }
+          HAL_DACEx_TriangleWaveGenerate(&hdac, DAC_CHANNEL_1, (trig_vol << 8));
 
-	  	  // Control frequency of triangular wave
-	  	  }else if ((current_row - 1 == 2) && (current_col == 3)){
-	  		  // increase freq
-	  		  if (trig_freq > 1){
-	  			trig_freq = trig_freq >> 1;
-	  		  }
-	  		  htim5.Init.Period = trig_freq;
-	  		  if (HAL_TIM_Base_Init(&htim5) != HAL_OK){
-	  			  Error_Handler();
-	  		  }
-	  	  }else if ((current_row - 1 == 2) && (current_col == 2)){
-	  		  // increase freq
-	  		  if (trig_freq < 1000){
-	  			trig_freq = trig_freq << 1;
-	  		  }
-	  		  htim5.Init.Period = trig_freq;
-	  		  if (HAL_TIM_Base_Init(&htim5) != HAL_OK){
-	  			  Error_Handler();
-	  		  }
-	  	  }
-	  }
+          // Control frequency of triangular wave
+        }
+        else if ((current_row == 2) && (current_col == 3)){
+          // increase freq
+          if (trig_freq > 1){
+            trig_freq = trig_freq >> 1;
+          }
+          htim5.Init.Period = trig_freq;
+          if (HAL_TIM_Base_Init(&htim5) != HAL_OK){
+            Error_Handler();
+          }
+        }
+        else if ((current_row == 2) && (current_col == 2)){
+          // increase freq
+          if (trig_freq < 1000){
+            trig_freq = trig_freq << 1;
+          }
+          htim5.Init.Period = trig_freq;
+          if (HAL_TIM_Base_Init(&htim5) != HAL_OK){
+            Error_Handler();
+          }
+        }
+
+        // Clear keypress and keydetect
+        key_detected = 0;
+        key_pressed = 0;
+        current_row = -1;
+        current_col = -1;
+      }
+    }
 
 	  if (new_sample){
 		  new_sample = 0;

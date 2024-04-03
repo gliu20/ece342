@@ -212,15 +212,9 @@ void SysTick_Handler(void)
 void EXTI4_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI4_IRQn 0 */
-	key_pressed = 1;
-
-	if (__HAL_GPIO_EXTI_GET_FLAG(COL0_Pin)){
-		current_col  = 0;
-
-	    while (HAL_GPIO_ReadPin(COL0_GPIO_Port, COL0_Pin)){}
-	 }
-
-	 HAL_GPIO_EXTI_IRQHandler(COL0_Pin);
+  if (__HAL_GPIO_EXTI_GET_FLAG(COL0_Pin)){
+    key_pressed = 1;
+  }
   /* USER CODE END EXTI4_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(COL0_Pin);
   /* USER CODE BEGIN EXTI4_IRQn 1 */
@@ -248,21 +242,12 @@ void DMA1_Stream5_IRQHandler(void)
 void EXTI9_5_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
-	key_pressed = 1;
-
-	if (__HAL_GPIO_EXTI_GET_FLAG(COL1_Pin)){
-		current_col  = 1;
-
-		while (HAL_GPIO_ReadPin(COL1_GPIO_Port, COL1_Pin)){}
-	}else if (__HAL_GPIO_EXTI_GET_FLAG(COL2_Pin)){
-		current_col  = 2;
-
-	    while (HAL_GPIO_ReadPin(COL2_GPIO_Port, COL2_Pin)){}
-	  }else if (__HAL_GPIO_EXTI_GET_FLAG(COL3_Pin)){
-		  current_col  = 3;
-
-		  while (HAL_GPIO_ReadPin(COL3_GPIO_Port, COL3_Pin)){}
-	  }
+  // Checks if any col is active is pressed
+  if (__HAL_GPIO_EXTI_GET_FLAG(COL1_Pin) ||
+      __HAL_GPIO_EXTI_GET_FLAG(COL2_Pin) ||
+      __HAL_GPIO_EXTI_GET_FLAG(COL3_Pin)) {
+    key_pressed = 1;
+  }
   /* USER CODE END EXTI9_5_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(COL1_Pin);
   HAL_GPIO_EXTI_IRQHandler(COL2_Pin);
