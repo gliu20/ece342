@@ -127,8 +127,6 @@ void check_keys() {
     // Clear Row0 to Row3; Only valid b/c they are all on GPIOC
     HAL_GPIO_WritePin(ROW0_GPIO_Port, ROW0_Pin|ROW1_Pin|ROW2_Pin|ROW3_Pin, GPIO_PIN_RESET);
 
-    HAL_Delay(0);
-
     // Set desired Row
     HAL_GPIO_WritePin(ROW0_GPIO_Port, row_pins[i], GPIO_PIN_SET);
     HAL_Delay(0);
@@ -154,8 +152,6 @@ void check_keys() {
       key_detected = 1;
     }
   }
-
-  HAL_Delay(0);
 
   // This ensures that after scanning the rows, they are all set
   // to high, so the interrupt detects if ANY key is pressed
