@@ -121,6 +121,9 @@ void check_keys();
 void check_keys() {
   uint16_t row_pins[] = { ROW0_Pin, ROW1_Pin, ROW2_Pin, ROW3_Pin };
 
+  HAL_NVIC_DisableIRQ(EXTI4_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
+
   key_detected = 0;
   for (int i = 0; i < 4; i++) {
 
@@ -156,6 +159,11 @@ void check_keys() {
   // This ensures that after scanning the rows, they are all set
   // to high, so the interrupt detects if ANY key is pressed
   HAL_GPIO_WritePin(ROW0_GPIO_Port, ROW0_Pin|ROW1_Pin|ROW2_Pin|ROW3_Pin, GPIO_PIN_SET);
+
+  HAL_Delay(1);
+
+  HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 }
 /* USER CODE END 0 */
 
@@ -213,7 +221,16 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
   // Set Row0 to Row3; Only valid b/c they are all on GPIOC
+
+  HAL_NVIC_DisableIRQ(EXTI4_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
+
   HAL_GPIO_WritePin(ROW0_GPIO_Port, ROW0_Pin|ROW1_Pin|ROW2_Pin|ROW3_Pin, GPIO_PIN_SET);
+
+  HAL_Delay(1);
+
+  HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
   HAL_TIM_Base_Start_IT(&htim7);
