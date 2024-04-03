@@ -54,6 +54,11 @@ UART_HandleTypeDef huart3;
 
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
+uint8_t volume_level = 5; // Default volume level
+uint8_t trig_vol = 5; // Default volume level
+
+uint16_t trig_freq = 100;
+
 int8_t current_row = -1, current_col = -1;
 uint8_t keypad_poll = 0;
 uint8_t key_pressed = 0;
@@ -138,8 +143,7 @@ int main(void)
   /* USER CODE BEGIN SysInit */
   float32_t output = 0;
   float index = 0;
-//  int32_t incr = 1;
-  float incr = 2;
+  float incr = 1;
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -160,10 +164,9 @@ int main(void)
     	  square[i] = -1;
     }
 //    HAL_DACEx_NoiseWaveGenerate(&hdac, DAC_CHANNEL_1, DAC_LFSRUNMASK_BITS5_0);
+        HAL_DACEx_TriangleWaveGenerate(&hdac, DAC_CHANNEL_1, (9 << 8));
 
-    HAL_DACEx_TriangleWaveGenerate(&hdac, DAC_CHANNEL_1, DAC_TRIANGLEAMPLITUDE_1023);
-
-//    HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 2047);
+//        HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 2047);
 
   /* USER CODE BEGIN 2 */
   current_row = 0;
@@ -176,8 +179,8 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim6);
   HAL_TIM_Base_Start(&htim5);
 
-	float32_t  *inputF32;
-	inputF32 = &sine[0];
+//	float32_t  *inputF32;
+//	inputF32 = &sine[0];
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -186,42 +189,86 @@ int main(void)
   {
     /* USER CODE END WHILE */
 	  if (keypad_poll){
-	  	  		  keypad_poll = 0;
-	  	  		  current_row = 0;
-	  	  	  	  poll_keypad();
-	  	  	  }
+	  	keypad_poll = 0;
+	  	current_row = 0;
+	  	poll_keypad();
+	  }
 
-	  	  	  if (key_pressed){
-	  	  		key_pressed = 0;
-	  	  		if ((current_row - 1 == 2) && (current_col == 1)){
-	  	  			// double the frequency
-	  	  			incr = incr*2;
-	  	  		}else if ((current_row - 1 == 2) && (current_col == 0)){
-	  	  			// half the frequency (haven't exactly figured out how to go below 1 kHz)
-	  	  //			if (incr > 1){
-	  	  //				incr = incr >> 1;
-	  	  //			}
-	  	  			incr = incr/2;
-	  	  		}
-	  	  	  }
+	  if (key_pressed){
+		  key_pressed = 0;
 
-	  	  	if (new_sample){
-	  	  	  new_sample = 0;
+	  	  if ((current_row - 1 == 2) && (current_col == 1)){
+	  		  // double the frequency
+	  		  incr = incr*2;
+	  	  }else if ((current_row - 1 == 2) && (current_col == 0)){
+	  	  // half the frequency (haven't exactly figured out how to go below 1 kHz)
+	  		  incr = incr/2;
+	  	  }else if ((current_row - 1 == 3) && (current_col == 1)){
+	  		  // Increase volume (if not maximum)
+	  	      if (volume_level < 10){
+	  	    	  volume_level++;
+	  	      }
+	  	  }else if ((current_row - 1 == 3) && (current_col == 0)){
+	  		  // Decrease volume (if not minimum)
+	  		  if (volume_level > 0){
+	  	                volume_level--;
+	  		  }
 
-	  	  	  if (filter_en){
-	  	  		  arm_fir_f32(&S, inputF32 + (uint32_t)(index)%SAMPLES, &output, blockSize);
-	  	  	  }else{
-	  //	  		  output = sine[(uint32_t)(index)%SAMPLES];
+	  	// Control volume of triangular wave
+	  	  }else if ((current_row - 1 == 3) && (current_col == 3)){
+	  		if (trig_vol < 11){
+	  			trig_vol++;
+	  		}
+	  		HAL_DACEx_TriangleWaveGenerate(&hdac, DAC_CHANNEL_1, (trig_vol << 8));
+	  	  }else if ((current_row - 1 == 3) && (current_col == 2)){
+	  		if (trig_vol > 0){
+	  			trig_vol--;
+	  		}
+	  		HAL_DACEx_TriangleWaveGenerate(&hdac, DAC_CHANNEL_1, (trig_vol << 8));
 
-	  	  		output = square[(uint32_t)(index)%SAMPLES];
-	  	  	  }
+	  	  // Control frequency of triangular wave
+	  	  }else if ((current_row - 1 == 2) && (current_col == 3)){
+	  		  // increase freq
+	  		  if (trig_freq > 1){
+	  			trig_freq = trig_freq >> 1;
+	  		  }
+	  		  htim5.Init.Period = trig_freq;
+	  		  if (HAL_TIM_Base_Init(&htim5) != HAL_OK){
+	  			  Error_Handler();
+	  		  }
+	  	  }else if ((current_row - 1 == 2) && (current_col == 2)){
+	  		  // increase freq
+	  		  if (trig_freq < 1000){
+	  			trig_freq = trig_freq << 1;
+	  		  }
+	  		  htim5.Init.Period = trig_freq;
+	  		  if (HAL_TIM_Base_Init(&htim5) != HAL_OK){
+	  			  Error_Handler();
+	  		  }
+	  	  }
+	  }
 
-	  	  	  output *= 2047;
+	  if (new_sample){
+		  new_sample = 0;
+
+		  const float32_t *waveform = (volume_level % 2 == 0) ? sine : square;
+
+	  	  if (filter_en){
+	  		  arm_fir_f32(&S, waveform + (uint32_t)(index)%SAMPLES, &output, blockSize);
+	  	  }else{
+	  		  output = waveform[(uint32_t)(index) % SAMPLES] * (volume_level / 10.0);
+	  	  }
+
+	  	  	  output *= 4095;
 	  	  	  output += 2047;
-	  	  	  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (uint16_t)output);
+//	  	  	  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (uint16_t)output);
+
 
 	  	  	  index += incr;
-	  	  	}
+	  	  	  if (index >= SAMPLES){
+	  	  		  index -= SAMPLES; // wrap around
+	  	  	  }
+	  	  }
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -358,7 +405,7 @@ static void MX_TIM5_Init(void)
   htim5.Instance = TIM5;
   htim5.Init.Prescaler = 0;
   htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim5.Init.Period = 100;	// 19 for 1 kHz
+  htim5.Init.Period = trig_freq;	// 19 for 1 kHz
   htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
@@ -402,7 +449,7 @@ static void MX_TIM6_Init(void)
   htim6.Instance = TIM6;
   htim6.Init.Prescaler = 8400 - 1;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 10000 - 1;
+  htim6.Init.Period = 1000 - 1;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
