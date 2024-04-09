@@ -54,6 +54,9 @@ void Error_Handler(void);
 #define SAMPLES (int)(SAMPLING_RATE/BASE_FREQ)
 #define BLOCK_SIZE 1
 #define NUM_TAPS 29
+#define NUMSTAGES 2
+
+#define MAX_GAIN 10
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
