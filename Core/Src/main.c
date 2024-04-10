@@ -267,6 +267,22 @@ int band_gainDB[5] = {0, 0, 0, 0, 0};
 float32_t input;
 float32_t prevSample;
 
+
+#define REVERB_BUFFER_LEN 2048
+#define REVERB_DECAY_RATE 0.9
+#define REVERB_DELAY_LINE_1 185
+#define REVERB_DELAY_LINE_2 1261
+#define REVERB_DELAY_LINE_3 1730
+#define REVERB_DELAY_LINE_4 2031
+
+// Ensure ring buffer is zeroed out
+float32_t reverbRingBuffer[REVERB_BUFFER_LEN] = { 0.0 };
+float32_t reverbDelayLine1 = 0.0;
+float32_t reverbDelayLine2 = 0.0;
+float32_t reverbDelayLine3 = 0.0;
+float32_t reverbDelayLine4 = 0.0;
+uint32_t reverbIndex = 0;
+
 //uint32_t blockSize = BLOCK_SIZE;
 //uint32_t numBlocks = SAMPLES/BLOCK_SIZE;
 /* USER CODE END PFP */
@@ -596,7 +612,16 @@ int main(void)
 //  y[n] = x[n -2] + y[n - 1] + y[n - 2];
 
 	if (push_button_en){
-		output += 0.25f*biquadStateBand1[0] + 0.125f*biquadStateBand1[1] + 0.25f*biquadStateBand1[2] + 0.125f*biquadStateBand1[3];
+    // Filter output
+    reverbRingBuffer[reverbIndex++ % REVERB_BUFFER_LEN] = output;
+
+    reverbDelayLine1 += REVERB_DECAY_RATE * reverbRingBuffer[(reverbIndex + REVERB_DELAY_LINE_1) % REVERB_BUFFER_LEN];
+    reverbDelayLine2 += REVERB_DECAY_RATE * reverbRingBuffer[(reverbIndex + REVERB_DELAY_LINE_2) % REVERB_BUFFER_LEN];
+    reverbDelayLine3 += REVERB_DECAY_RATE * reverbRingBuffer[(reverbIndex + REVERB_DELAY_LINE_3) % REVERB_BUFFER_LEN];
+    reverbDelayLine4 += REVERB_DECAY_RATE * reverbRingBuffer[(reverbIndex + REVERB_DELAY_LINE_4) % REVERB_BUFFER_LEN];
+
+    output = (reverbDelayLine1 + reverbDelayLine2 + reverbDelayLine3 + reverbDelayLine4) / 4;
+		//output += 0.25f*biquadStateBand1[0] + 0.125f*biquadStateBand1[1] + 0.25f*biquadStateBand1[2] + 0.125f*biquadStateBand1[3];
 	}
 
 	output += 2048.0;
