@@ -81,7 +81,7 @@ int8_t current_row = -1, current_col = -1;
 uint8_t key_pressed = 0;
 uint8_t key_detected = 0;
 char key;
-uint8_t filter_en = 0;
+uint8_t push_button_en = 0;
 uint8_t new_sample = 0;
 
 uint8_t echo_en = 0;
@@ -543,10 +543,8 @@ int main(void)
 			}
 
 			else if (key == 'E'){
-				echo_en = 1;
 			}
 			else if (key == 'F'){
-				echo_en = 0;
 			}
 			// Clear keypress and keydetect
 			key_detected = 0;
@@ -561,8 +559,7 @@ int main(void)
 
 	HAL_ADC_Start(&hadc3);
 	HAL_ADC_PollForConversion(&hadc3, 100);
-	input = (float32_t)HAL_ADC_GetValue(&hadc3);
-	//	  		  const float32_t *waveform = (volume_level % 2 == 0) ? sine : square;
+	input = (float32_t)HAL_ADC_GetValue(&hadc3) - 2048.0;
 	//
 	//	  	  	  if (filter_en){
 	//	  	  		  arm_fir_f32(&lp, waveform + (uint32_t)(index)%SAMPLES, &output, BLOCK_SIZE);
@@ -580,11 +577,29 @@ int main(void)
 	arm_biquad_cascade_df1_f32(&S4, &output, &output, 1);
 	arm_biquad_cascade_df1_f32(&S5, &output, &output, 1);
 
-	if (echo_en){
-		output += 0.5f*biquadStateBand1[0] + 0.25f*biquadStateBand1[1] + 0.25f*biquadStateBand1[2] + 0.125f*biquadStateBand1[3];
+	// Select sine waveform
+	const float32_t *waveform = (volume_level % 2 == 0) ? sine : square;
+
+  // Cap output
+//  if (output > 4096){
+//    output = 4096;
+//  }
+//  else if (output < 0) {
+//    output = 0;
+//  }
+
+	//output += waveform[(uint32_t)(index) % SAMPLES] * (volume_level / 10.0);
+
+
+
+
+//  y[n] = x[n -2] + y[n - 1] + y[n - 2];
+
+	if (push_button_en){
+		output += 0.25f*biquadStateBand1[0] + 0.125f*biquadStateBand1[1] + 0.25f*biquadStateBand1[2] + 0.125f*biquadStateBand1[3];
 	}
 
-//	output = input;
+	output += 2048.0;
 	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_2, DAC_ALIGN_12B_R, (uint16_t)output);
 
 

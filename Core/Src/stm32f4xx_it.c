@@ -42,7 +42,7 @@
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
 uint32_t dead_time = 0;
-extern uint8_t filter_en;
+extern uint8_t push_button_en;
 extern uint8_t new_sample;
 extern int8_t current_col;
 extern uint8_t key_pressed;
@@ -252,7 +252,7 @@ void EXTI15_10_IRQHandler(void)
 	if (HAL_GetTick() - dead_time >= 50){
 	    if (__HAL_GPIO_EXTI_GET_FLAG(USER_Btn_Pin)) {
 	      // Your code here
-	    	filter_en = !filter_en;
+	    	push_button_en = !push_button_en;
 	    }
 	  }
 
