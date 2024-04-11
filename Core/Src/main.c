@@ -269,7 +269,7 @@ float32_t prevSample;
 
 
 #define REVERB_BUFFER_LEN 2048
-#define REVERB_DECAY_RATE 0.9
+#define REVERB_DECAY_RATE 0.01
 #define REVERB_DELAY_LINE_1 185
 #define REVERB_DELAY_LINE_2 1261
 #define REVERB_DELAY_LINE_3 1730
@@ -460,13 +460,13 @@ int main(void)
 				if (trig_vol < 11){
 					trig_vol++;
 				}
-				HAL_DACEx_TriangleWaveGenerate(&hdac, DAC_CHANNEL_1, (trig_vol << 8));
+				HAL_DACEx_TriangleWaveGenerate(&hdac, DAC_CHANNEL_2, (trig_vol << 8));
 			}
 			else if (key == 'D'){
 				if (trig_vol > 0){
 					trig_vol--;
 				}
-				HAL_DACEx_TriangleWaveGenerate(&hdac, DAC_CHANNEL_1, (trig_vol << 8));
+				HAL_DACEx_TriangleWaveGenerate(&hdac, DAC_CHANNEL_2, (trig_vol << 8));
 
 			// Control frequency of triangular wave
 			}
@@ -575,7 +575,11 @@ int main(void)
 
 	HAL_ADC_Start(&hadc3);
 	HAL_ADC_PollForConversion(&hadc3, 100);
-	input = (float32_t)HAL_ADC_GetValue(&hadc3) - 2048.0;
+
+	input = (float32_t)HAL_ADC_GetValue(&hadc3);
+	input = (input - 2048.0) / 4096.0;
+//	input -= 2048.0;
+	//input = (float32_t)HAL_ADC_GetValue(&hadc3) - 2048.0;
 	//
 	//	  	  	  if (filter_en){
 	//	  	  		  arm_fir_f32(&lp, waveform + (uint32_t)(index)%SAMPLES, &output, BLOCK_SIZE);
@@ -611,20 +615,23 @@ int main(void)
 
 //  y[n] = x[n -2] + y[n - 1] + y[n - 2];
 
+
 	if (push_button_en){
     // Filter output
-    reverbRingBuffer[reverbIndex++ % REVERB_BUFFER_LEN] = output;
+    reverbRingBuffer[reverbIndex++ % REVERB_BUFFER_LEN] = input;
 
-    reverbDelayLine1 += REVERB_DECAY_RATE * reverbRingBuffer[(reverbIndex + REVERB_DELAY_LINE_1) % REVERB_BUFFER_LEN];
-    reverbDelayLine2 += REVERB_DECAY_RATE * reverbRingBuffer[(reverbIndex + REVERB_DELAY_LINE_2) % REVERB_BUFFER_LEN];
-    reverbDelayLine3 += REVERB_DECAY_RATE * reverbRingBuffer[(reverbIndex + REVERB_DELAY_LINE_3) % REVERB_BUFFER_LEN];
-    reverbDelayLine4 += REVERB_DECAY_RATE * reverbRingBuffer[(reverbIndex + REVERB_DELAY_LINE_4) % REVERB_BUFFER_LEN];
+    reverbDelayLine1 = 1 * reverbRingBuffer[(reverbIndex - REVERB_DELAY_LINE_1 + REVERB_BUFFER_LEN) % REVERB_BUFFER_LEN];
+    reverbDelayLine2 = 1 * reverbRingBuffer[(reverbIndex - REVERB_DELAY_LINE_2 + REVERB_BUFFER_LEN) % REVERB_BUFFER_LEN];
+    reverbDelayLine3 = 1 * reverbRingBuffer[(reverbIndex - REVERB_DELAY_LINE_3 + REVERB_BUFFER_LEN) % REVERB_BUFFER_LEN];
+    reverbDelayLine4 = 1 * reverbRingBuffer[(reverbIndex - REVERB_DELAY_LINE_4 + REVERB_BUFFER_LEN) % REVERB_BUFFER_LEN];
 
     output = (reverbDelayLine1 + reverbDelayLine2 + reverbDelayLine3 + reverbDelayLine4) / 4;
 		//output += 0.25f*biquadStateBand1[0] + 0.125f*biquadStateBand1[1] + 0.25f*biquadStateBand1[2] + 0.125f*biquadStateBand1[3];
 	}
 
-	output += 2048.0;
+	output *= 4096.0;
+  output += 2048.0;
+
 	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_2, DAC_ALIGN_12B_R, (uint16_t)output);
 
 
